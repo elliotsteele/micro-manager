@@ -1454,6 +1454,22 @@ int SpinnakerCamera::OnLineSource(MM::PropertyBase * pProp, MM::ActionType eAct)
 	return OnEnumPropertyChanged(m_cam->LineSource, pProp, eAct);
 }
 
+int SpinnakerCamera::allocateImageBuffer(const std::size_t size)
+{
+	if (m_imageBuff != NULL) {
+		delete[] m_imageBuff;
+		m_imageBuff = NULL;
+	}
+
+	m_imageBuff = new unsigned char[size];
+	if (m_imageBuff == NULL) {
+		SetErrorText(SPKR_ERROR, "Could not allocate sufficient memory for image");
+		return SPKR_ERROR;
+	}
+
+	return DEVICE_OK;
+}
+
 
 int SpinnakerCamera::PrepareSequenceAcqusition()
 {
@@ -1513,7 +1529,7 @@ int SpinnakerCamera::MoveImageToCircularBuffer()
 
 	try
 	{
-      if (m_cam->TriggerMode.GetValue() == SPKR::TriggerMode_On &&
+		if (m_cam->TriggerMode.GetValue() == SPKR::TriggerMode_On &&
 			m_cam->TriggerSource.GetValue() == SPKR::TriggerSource_Software)
 		{
 			m_cam->TriggerSoftware.Execute();
@@ -1541,39 +1557,34 @@ int SpinnakerCamera::MoveImageToCircularBuffer()
 
 			MMThreadGuard g(m_pixelLock);
 
-			if (m_imageBuff)
-			{
-				delete[] m_imageBuff;
-				m_imageBuff = NULL;
-			}
+			unsigned char* imageData = (unsigned char*)ip->GetData();
 
-			m_imageBuff = new unsigned char[ip->GetWidth()*ip->GetWidth()*this->GetImageBytesPerPixel()];
+			if (ip->GetPixelFormat() == SPKR::PixelFormat_Mono12p || ip->GetPixelFormat() == SPKR::PixelFormat_Mono12Packed) {
+				if (m_imageBuff == NULL)
+				{
+					int ret = allocateImageBuffer(GetImageWidth() * GetImageHeight() * GetImageBytesPerPixel());
+					if (ret != DEVICE_OK) return ret;
+				}
 
-			if (m_imageBuff)
-			{
 				std::memcpy(m_imageBuff, ip->GetData(), ip->GetBufferSize());
 				if (ip->GetPixelFormat() == SPKR::PixelFormat_Mono12p)
 					Unpack12Bit(ip->GetWidth(), ip->GetHeight(), false);
 				else if (ip->GetPixelFormat() == SPKR::PixelFormat_Mono12Packed)
 					Unpack12Bit(ip->GetWidth(), ip->GetHeight(), true);
-			}
-			else
-			{
-				SetErrorText(SPKR_ERROR, "Could not allocate sufficient memory for image");
-				return SPKR_ERROR;
+				imageData = m_imageBuff;
 			}
 
 			unsigned int w = GetImageWidth();
 			unsigned int h = GetImageHeight();
 			unsigned int b = GetImageBytesPerPixel();
 
-			int ret = GetCoreCallback()->InsertImage(this, m_imageBuff, w, h, b, md.Serialize().c_str());
+			int ret = GetCoreCallback()->InsertImage(this, imageData, w, h, b, md.Serialize().c_str());
 			if (!m_stopOnOverflow && ret == DEVICE_BUFFER_OVERFLOW)
 			{
 				// do not stop on overflow - just reset the buffer
 				GetCoreCallback()->ClearImageBuffer(this);
 				// don't process this same image again...
-				return GetCoreCallback()->InsertImage(this, m_imageBuff, w, h, b, md.Serialize().c_str(), false);
+				return GetCoreCallback()->InsertImage(this, imageData, w, h, b, md.Serialize().c_str(), false);
 			}
 			else
 			{
@@ -1635,6 +1646,7 @@ void SpinnakerAcquisitionThread::Start(long numImages, double intervalMs)
 	m_actualDuration = 0;
 	m_startTime = m_spkrCam->GetCurrentMMTime();
 	m_lastFrameTime = 0;
+	m_spkrCam->allocateImageBuffer(m_spkrCam->GetImageWidth() * m_spkrCam->GetImageHeight() * m_spkrCam->GetImageBytesPerPixel());
 
 	if (numImages == -1)
 	{

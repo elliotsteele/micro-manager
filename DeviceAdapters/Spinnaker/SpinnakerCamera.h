@@ -92,6 +92,7 @@ public:
 	int OnLineSource(MM::PropertyBase* pProp, MM::ActionType eAct, long lineNum);*/
 
 private:
+	int allocateImageBuffer(const std::size_t size);
 	friend class SpinnakerAcquisitionThread;
 
 #pragma pack(push, 1)
