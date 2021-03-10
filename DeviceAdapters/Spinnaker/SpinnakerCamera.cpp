@@ -65,7 +65,7 @@ std::vector<CamNameAndSN> GetSpinnakeerCameraNamesAndSNs()
    {
       CamNameAndSN camInfo;
 
-      GENAPI::INodeMap& nm =
+      GENAPI::INodeMap &nm =
          camList.GetByIndex(i)
          ->GetTLDeviceNodeMap();
 
@@ -105,7 +105,7 @@ MODULE_API void InitializeModuleData()
             MM::CameraDevice,
             "Point Grey Spinnaker Camera");
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       std::wstringstream wss = std::wstringstream();
       wss << ex.what();
@@ -131,7 +131,7 @@ SpinnakerCamera::SpinnakerCamera(GENICAM::gcstring name)
 {
    InitializeDefaultErrorMessages();
 
-
+   
    try
    {
       std::vector<CamNameAndSN> camInfos =
@@ -148,7 +148,7 @@ SpinnakerCamera::SpinnakerCamera(GENICAM::gcstring name)
          if (camInfos[i].name == name)
             AddAllowedValue("Serial Number", camInfos[i].serialNumber.c_str());
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -194,7 +194,7 @@ int SpinnakerCamera::Initialize()
 
    for (unsigned int i = 0; i < camList.GetSize(); i++)
    {
-      auto& nm = camList.GetByIndex(i)
+      auto &nm = camList.GetByIndex(i)
          ->GetTLDeviceNodeMap();
 
 
@@ -233,14 +233,14 @@ int SpinnakerCamera::Initialize()
       m_cam->AcquisitionMode.SetValue(SPKR::AcquisitionMode_SingleFrame);
       m_cam->TriggerMode.SetValue(SPKR::TriggerMode_Off);
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
    }
 
    CPropertyAction* pAct;
-   GENAPI::INodeMap& nm = m_cam->GetNodeMap();
+   GENAPI::INodeMap &nm = m_cam->GetNodeMap();
 
    try
    {
@@ -256,7 +256,7 @@ int SpinnakerCamera::Initialize()
             AddAllowedValue("Frame Rate Auto", symbolics[i].c_str());
       }
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -279,7 +279,7 @@ int SpinnakerCamera::Initialize()
          LogMessage("Failed to create frame rate enabled...");
       }
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -385,7 +385,7 @@ int SpinnakerCamera::Initialize()
          LogMessage("Unknown Binning Control");
       }
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -402,16 +402,11 @@ int SpinnakerCamera::Initialize()
    CreatePropertyFromFloat("Black Level", m_cam->BlackLevel, &SpinnakerCamera::OnBlackLevel);
    CreatePropertyFromEnum("Black Level Auto", m_cam->BlackLevelAuto, &SpinnakerCamera::OnBlackLevelAuto);
 
-   CreateProperty(MM::g_Keyword_CameraID, m_SN, MM::String, true);
-   CreatePropertyFromFloat("Temperature", m_cam->DeviceTemperature, &SpinnakerCamera::OnTemperature);
-   CreatePropertyFromBool("Reverse X", m_cam->ReverseX, &SpinnakerCamera::OnReverseX);
-   CreatePropertyFromBool("Reverse Y", m_cam->ReverseY, &SpinnakerCamera::OnReverseY);
-
    try
    {
       m_cam->TriggerMode.SetValue(SPKR::TriggerMode_On);
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
@@ -442,11 +437,11 @@ int SpinnakerCamera::Initialize()
          for (int i = 0; i < m_gpioLines.size(); i++)
          {
             LS->FromString(m_gpioLines[i]);
-
+            
             CreatePropertyFromLineEnum("LineMode", i, &SpinnakerCamera::OnLineMode);
 
             GENAPI::CEnumerationPtr LM = nm.GetNode("LineMode");
-            GENICAM::gcstring lineMode = "";
+            GENICAM::gcstring lineMode = ""; 
             try
             {
                lineMode = LM->GetCurrentEntry()->GetSymbolic();
@@ -474,7 +469,7 @@ int SpinnakerCamera::Initialize()
    {
       m_cam->TriggerMode.SetValue(originalTriggerMode);
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
@@ -526,7 +521,7 @@ int SpinnakerCamera::SnapImage()
 
       m_imagePtr = m_cam->GetNextImage((int)this->GetExposure() + 1000);
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
@@ -550,7 +545,7 @@ void SpinnakerCamera::CreatePropertyFromFloat(const std::string& name, GENAPI::I
          else
             CreateProperty(name.c_str(), "0", MM::Float, readOnly, pAct);
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          LogMessage(ex.what());
       }
@@ -564,7 +559,7 @@ void SpinnakerCamera::CreatePropertyFromFloat(const std::string& name, GENAPI::I
 void SpinnakerCamera::CreatePropertyFromBool(const std::string& name, GENAPI::IBoolean& camProp, int(SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct))
 {
    auto accessMode = camProp.GetAccessMode();
-
+   
    if (accessMode == GENAPI::EAccessMode::RO || accessMode == GENAPI::EAccessMode::RW || accessMode == GENAPI::EAccessMode::NA)
    {
       try
@@ -580,7 +575,7 @@ void SpinnakerCamera::CreatePropertyFromBool(const std::string& name, GENAPI::IB
          AddAllowedValue(name.c_str(), "0");
          AddAllowedValue(name.c_str(), "1");
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          LogMessage(ex.what());
       }
@@ -616,11 +611,11 @@ void SpinnakerCamera::CreatePropertyFromLineBool(const std::string& nodeName, in
    {
       GENICAM::gcstring name = m_gpioLines[lineNumber] + nodeName.c_str();
       auto ss = std::stringstream();
-      ss << (int)bPtr->GetValue();
+      ss << (int) bPtr->GetValue();
 
       auto pActEx = new CPropertyActionEx(this, fpt, lineNumber);
       CreateProperty(name.c_str(), ss.str().c_str(), MM::Integer, false, pActEx);
-
+      
       AddAllowedValue(name.c_str(), "0");
       AddAllowedValue(name.c_str(), "1");
    }
@@ -639,7 +634,7 @@ int SpinnakerCamera::OnFloatPropertyChanged(GENAPI::IFloat& camProp, MM::Propert
          if (mmProp != nullptr) mmProp->SetReadOnly(camProp.GetAccessMode() != GENAPI::EAccessMode::RW);
          pProp->Set(camProp.GetValue());
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ("Could not read " + pProp->GetName() + "! " + std::string(ex.what())).c_str());
          return SPKR_ERROR;
@@ -654,7 +649,7 @@ int SpinnakerCamera::OnFloatPropertyChanged(GENAPI::IFloat& camProp, MM::Propert
 
          camProp.SetValue(val);
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ("Could not write " + pProp->GetName() + "! " + std::string(ex.what())).c_str());
          return SPKR_ERROR;
@@ -678,7 +673,7 @@ int SpinnakerCamera::OnBoolPropertyChanged(GENAPI::IBoolean& camProp, MM::Proper
 
          pProp->Set((long)camProp.GetValue());
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ("Could not read " + pProp->GetName() + "! " + std::string(ex.what())).c_str());
          return SPKR_ERROR;
@@ -691,9 +686,9 @@ int SpinnakerCamera::OnBoolPropertyChanged(GENAPI::IBoolean& camProp, MM::Proper
          long val;
          pProp->Get(val);
 
-         camProp.SetValue(val != 0);
+         camProp.SetValue( val != 0);
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ("Could not write " + pProp->GetName() + "! " + std::string(ex.what())).c_str());
          return SPKR_ERROR;
@@ -711,11 +706,11 @@ int SpinnakerCamera::OnLineEnumPropertyChanged(std::string name, MM::PropertyBas
    {
       LS = m_cam->GetNodeMap().GetNode("LineSelector");
       ePtr = m_cam->GetNodeMap().GetNode(name.c_str());
-
+      
       if (isNodeAvailable<NAM_WRITE>(LS))
          LS->FromString(m_gpioLines[lineNum]);
-   }
-   catch (SPKR::Exception& ex)
+   } 
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
@@ -736,13 +731,13 @@ int SpinnakerCamera::OnLineEnumPropertyChanged(std::string name, MM::PropertyBas
             pProp->Set("");
          }
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ex.what());
          return SPKR_ERROR;
       }
    }
-   else if (eAct == MM::AfterSet)
+   else if(eAct == MM::AfterSet)
    {
       try
       {
@@ -759,13 +754,13 @@ int SpinnakerCamera::OnLineEnumPropertyChanged(std::string name, MM::PropertyBas
             return SPKR_ERROR;
          }
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ex.what());
          return SPKR_ERROR;
       }
    }
-
+   
    return DEVICE_OK;
 }
 
@@ -777,11 +772,11 @@ int SpinnakerCamera::OnLineBoolPropertyChanged(std::string name, MM::PropertyBas
    {
       LS = m_cam->GetNodeMap().GetNode("LineSelector");
       bPtr = m_cam->GetNodeMap().GetNode(name.c_str());
-
+      
       if (isNodeAvailable<NAM_WRITE>(LS))
          LS->FromString(m_gpioLines[lineNum]);
-   }
-   catch (SPKR::Exception& ex)
+   } 
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ex.what());
       return SPKR_ERROR;
@@ -801,13 +796,13 @@ int SpinnakerCamera::OnLineBoolPropertyChanged(std::string name, MM::PropertyBas
             return SPKR_ERROR;
          }
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ex.what());
          return SPKR_ERROR;
       }
    }
-   else if (eAct == MM::AfterSet)
+   else if(eAct == MM::AfterSet)
    {
       try
       {
@@ -824,13 +819,13 @@ int SpinnakerCamera::OnLineBoolPropertyChanged(std::string name, MM::PropertyBas
             return SPKR_ERROR;
          }
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ex.what());
          return SPKR_ERROR;
       }
    }
-
+   
    return DEVICE_OK;
 }
 
@@ -929,7 +924,7 @@ const unsigned char* SpinnakerCamera::GetImageBuffer()
       if (m_imagePtr != NULL)
          m_imagePtr->Release();
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
       if (m_imageBuff)
@@ -941,22 +936,21 @@ const unsigned char* SpinnakerCamera::GetImageBuffer()
    {
       m_cam->EndAcquisition();
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
-
    return m_imageBuff;
 }
 
 unsigned SpinnakerCamera::GetImageWidth() const
 {
-   return (unsigned)m_cam->Width.GetValue();
+   return (unsigned) m_cam->Width.GetValue();
 }
 
 unsigned SpinnakerCamera::GetImageHeight() const
 {
-   return (unsigned)m_cam->Height.GetValue();
+   return (unsigned) m_cam->Height.GetValue();
 }
 
 unsigned SpinnakerCamera::GetImageBytesPerPixel() const
@@ -1048,7 +1042,7 @@ unsigned SpinnakerCamera::GetBitDepth() const
 
 long SpinnakerCamera::GetImageBufferSize() const
 {
-   return (long)(m_cam->Width.GetValue() * m_cam->Height.GetValue() * this->GetImageBytesPerPixel());
+   return (long) (m_cam->Width.GetValue() * m_cam->Height.GetValue() * this->GetImageBytesPerPixel());
 }
 
 double SpinnakerCamera::GetExposure() const
@@ -1063,7 +1057,7 @@ void SpinnakerCamera::SetExposure(double exp)
       m_cam->ExposureTime.SetValue(exp * 1000.0);
       GetCoreCallback()->OnExposureChanged(this, exp);;
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -1074,22 +1068,22 @@ int SpinnakerCamera::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySi
    try
    {
       //Force offsets to be multiples of 2
-      x -= (unsigned)((m_cam->OffsetX.GetInc() - ((x - m_cam->OffsetX.GetMin()) % m_cam->OffsetX.GetInc())));
-      y -= (unsigned)((m_cam->OffsetY.GetInc() - ((y - m_cam->OffsetY.GetMin()) % m_cam->OffsetY.GetInc())));
+      x -= (unsigned) ( (m_cam->OffsetX.GetInc() - ((x - m_cam->OffsetX.GetMin()) % m_cam->OffsetX.GetInc())));
+      y -= (unsigned) ( (m_cam->OffsetY.GetInc() - ((y - m_cam->OffsetY.GetMin()) % m_cam->OffsetY.GetInc())));
 
       // Force width and height to be multiple of 8
-      xSize += (unsigned)((m_cam->Width.GetInc() - ((xSize - m_cam->Width.GetMin()) % m_cam->Width.GetInc())));
-      ySize += (unsigned)((m_cam->Height.GetInc() - ((ySize - m_cam->Height.GetMin()) % m_cam->Height.GetInc())));
+      xSize += (unsigned) ((m_cam->Width.GetInc() - ((xSize - m_cam->Width.GetMin()) % m_cam->Width.GetInc())));
+      ySize += (unsigned) ((m_cam->Height.GetInc() - ((ySize - m_cam->Height.GetMin()) % m_cam->Height.GetInc())));
 
-      xSize = (unsigned)(min(xSize, m_cam->Width.GetMax()));
-      ySize = (unsigned)(min(ySize, m_cam->Height.GetMax()));
+      xSize = (unsigned) (min(xSize, m_cam->Width.GetMax()));
+      ySize = (unsigned) (min(ySize, m_cam->Height.GetMax()));
 
       m_cam->Width.SetValue(xSize);
       m_cam->Height.SetValue(ySize);
-      m_cam->OffsetX.SetValue(x);
+      m_cam->OffsetX.SetValue(x); 
       m_cam->OffsetY.SetValue(y);
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       this->ClearROI();
       SetErrorText(SPKR_ERROR, ("Could not set ROI! " + std::string(ex.what())).c_str());
@@ -1100,10 +1094,10 @@ int SpinnakerCamera::SetROI(unsigned x, unsigned y, unsigned xSize, unsigned ySi
 
 int SpinnakerCamera::GetROI(unsigned& x, unsigned& y, unsigned& xSize, unsigned& ySize)
 {
-   x = (unsigned)m_cam->OffsetX.GetValue();
-   y = (unsigned)m_cam->OffsetY.GetValue();
-   xSize = (unsigned)m_cam->Width.GetValue();
-   ySize = (unsigned)m_cam->Height.GetValue();
+   x = (unsigned) m_cam->OffsetX.GetValue();
+   y = (unsigned) m_cam->OffsetY.GetValue();
+   xSize = (unsigned) m_cam->Width.GetValue();
+   ySize = (unsigned) m_cam->Height.GetValue();
    return DEVICE_OK;
 }
 
@@ -1116,7 +1110,7 @@ int SpinnakerCamera::ClearROI()
       m_cam->Width.SetValue(m_cam->Width.GetMax());
       m_cam->Height.SetValue(m_cam->Height.GetMax());
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       SetErrorText(SPKR_ERROR, ("Could not Clear ROI! " + std::string(ex.what())).c_str());
       return SPKR_ERROR;
@@ -1188,7 +1182,7 @@ int SpinnakerCamera::OnFrameRateEnabled(MM::PropertyBase* pProp, MM::ActionType 
          {
             AFRCE->SetValue(value != 0);
          }
-         catch (SPKR::Exception& ex)
+         catch (SPKR::Exception &ex)
          {
             SetErrorText(SPKR_ERROR, ("Could not set acquisition frame rate control enabled! " + std::string(ex.what())).c_str());
             return SPKR_ERROR;
@@ -1231,7 +1225,7 @@ int SpinnakerCamera::OnFrameRateAuto(MM::PropertyBase* pProp, MM::ActionType eAc
          {
             AFRA->FromString(value.c_str());
          }
-         catch (SPKR::Exception& ex)
+         catch (SPKR::Exception &ex)
          {
             SetErrorText(SPKR_ERROR, ("Could not set auto frame rate! " + std::string(ex.what())).c_str());
             return SPKR_ERROR;
@@ -1283,7 +1277,7 @@ int SpinnakerCamera::OnBinningEnum(MM::PropertyBase* pProp, MM::ActionType eAct)
          {
             VM->FromString(GENICAM::gcstring(val.c_str()));
          }
-         catch (SPKR::Exception& ex)
+         catch (SPKR::Exception &ex)
          {
             SetErrorText(SPKR_ERROR, ex.what());
             return SPKR_ERROR;
@@ -1328,7 +1322,7 @@ int SpinnakerCamera::OnBinningInt(MM::PropertyBase* pProp, MM::ActionType eAct)
          m_cam->Width.SetValue(m_cam->WidthMax.GetValue());
          m_cam->Height.SetValue(m_cam->HeightMax.GetValue());
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ex.what());
          return SPKR_ERROR;
@@ -1669,7 +1663,7 @@ int SpinnakerCamera::MoveImageToCircularBuffer()
       if (ip != NULL)
          ip->Release();
    }
-   catch (SPKR::Exception& ex)
+   catch (SPKR::Exception &ex)
    {
       LogMessage(ex.what());
    }
@@ -1677,7 +1671,7 @@ int SpinnakerCamera::MoveImageToCircularBuffer()
    return DEVICE_OK;
 }
 
-SpinnakerAcquisitionThread::SpinnakerAcquisitionThread(SpinnakerCamera* pCam)
+SpinnakerAcquisitionThread::SpinnakerAcquisitionThread(SpinnakerCamera * pCam)
    : m_numImages(-1),
    m_intervalMs(0),
    m_imageCounter(0),
@@ -1753,12 +1747,12 @@ void SpinnakerAcquisitionThread::Resume()
 
 int SpinnakerAcquisitionThread::svc(void) throw()
 {
-   int ret = DEVICE_ERR;
+   int ret=DEVICE_ERR;
 
    try
    {
       do
-      {
+      {  
 
          ret = m_spkrCam->MoveImageToCircularBuffer();
 
@@ -1770,8 +1764,8 @@ int SpinnakerAcquisitionThread::svc(void) throw()
       } while (DEVICE_OK == ret && !IsStopped() && (m_imageCounter++ < m_numImages || m_numImages == -1));
       if (IsStopped())
          m_spkrCam->LogMessage("SeqAcquisition interrupted by the user\n");
-   }
-   catch (SPKR::Exception& ex)
+   } 
+   catch (SPKR::Exception &ex)
    {
       m_spkrCam->LogMessage(ex.what());
    }
@@ -1780,7 +1774,7 @@ int SpinnakerAcquisitionThread::svc(void) throw()
       m_spkrCam->LogMessage("Unknown error in acquisition");
    }
 
-   m_stop = true;
+   m_stop=true;
    m_actualDuration = m_spkrCam->GetCurrentMMTime() - m_startTime;
    m_spkrCam->m_cam->EndAcquisition();
    m_spkrCam->m_cam->AcquisitionMode.SetValue(SPKR::AcquisitionMode_SingleFrame);

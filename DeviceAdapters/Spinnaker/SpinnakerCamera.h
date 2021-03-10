@@ -115,36 +115,36 @@ private:
    template<typename enumType>
    void CreatePropertyFromEnum(
       const std::string& name,
-      GENAPI::IEnumerationT<enumType>& camProp,
-      int (SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
+      GENAPI::IEnumerationT<enumType> &camProp,
+      int (SpinnakerCamera::*fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
    void CreatePropertyFromFloat(
       const std::string& name,
-      GENAPI::IFloat& camProp,
-      int (SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
+      GENAPI::IFloat &camProp,
+      int (SpinnakerCamera::*fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
    void CreatePropertyFromBool(
       const std::string& name,
-      GENAPI::IBoolean& camProp,
-      int (SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
+      GENAPI::IBoolean &camProp,
+      int (SpinnakerCamera::*fpt)(MM::PropertyBase* pProp, MM::ActionType eAct));
    void CreatePropertyFromLineEnum(
       const std::string& nodeName,
       int lineNumber,
-      int (SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct, long data));
+      int (SpinnakerCamera::*fpt)(MM::PropertyBase* pProp, MM::ActionType eAct, long data));
    void CreatePropertyFromLineBool(
       const std::string& nodeName,
       int lineNumber,
-      int (SpinnakerCamera::* fpt)(MM::PropertyBase* pProp, MM::ActionType eAct, long data));
+      int (SpinnakerCamera::*fpt)(MM::PropertyBase* pProp, MM::ActionType eAct, long data));
 
    template<typename enumType>
    int OnEnumPropertyChanged(
-      GENAPI::IEnumerationT<enumType>& camProp,
+      GENAPI::IEnumerationT<enumType> &camProp,
       MM::PropertyBase* pProp,
       MM::ActionType eAct);
    int OnFloatPropertyChanged(
-      GENAPI::IFloat& camProp,
+      GENAPI::IFloat &camProp,
       MM::PropertyBase* pProp,
       MM::ActionType eAct);
    int OnBoolPropertyChanged(
-      GENAPI::IBoolean& camProp,
+      GENAPI::IBoolean &camProp,
       MM::PropertyBase* pProp,
       MM::ActionType eAct);
    int OnLineEnumPropertyChanged(
@@ -178,8 +178,8 @@ private:
          return "Unknown";
       }
    }
-#pragma warning(pop)
-
+  #pragma warning(pop)
+   
 
    GENICAM::gcstring m_SN;
    SPKR::SystemPtr m_system;
@@ -192,7 +192,7 @@ private:
 
    BinningControl m_bc;
 
-   SpinnakerAcquisitionThread* m_aqThread;
+   SpinnakerAcquisitionThread *m_aqThread;
    MMThreadLock m_pixelLock;
    bool m_stopOnOverflow;
 
@@ -203,7 +203,7 @@ private:
 class SpinnakerAcquisitionThread : public MMDeviceThreadBase
 {
 public:
-   SpinnakerAcquisitionThread(SpinnakerCamera* pCam);
+   SpinnakerAcquisitionThread(SpinnakerCamera *pCam);
    ~SpinnakerAcquisitionThread();
    void Stop();
    void Start(long numImages, double intervalMs);
@@ -246,7 +246,7 @@ inline void SpinnakerCamera::CreatePropertyFromEnum(const std::string& name, GEN
          bool readOnly = accessMode == GENAPI::EAccessMode::RO || accessMode == GENAPI::EAccessMode::NA;
          auto pAct = new CPropertyAction(this, fpt);
 
-         if (accessMode != GENAPI::EAccessMode::NA)
+         if (accessMode != GENAPI::EAccessMode::NA) 
          {
             GENAPI::StringList_t propertyValues;
             camProp.GetSymbolics(propertyValues);
@@ -312,7 +312,7 @@ inline int SpinnakerCamera::OnEnumPropertyChanged(GENAPI::IEnumerationT<enumType
 
          camProp.FromString(GENICAM::gcstring(val.c_str()));
       }
-      catch (SPKR::Exception& ex)
+      catch (SPKR::Exception &ex)
       {
          SetErrorText(SPKR_ERROR, ("Could not write " + pProp->GetName() + "! " + std::string(ex.what())).c_str());
          return SPKR_ERROR;
