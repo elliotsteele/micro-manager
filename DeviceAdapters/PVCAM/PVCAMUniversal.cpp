@@ -205,10 +205,13 @@ const int g_UniversalParamsCount = sizeof(g_UniversalParams)/sizeof(ParamNameIdP
 //===================================================== LOCAL UTILITY FUNCTIONS
 
 
+#ifdef _WIN32
+// TODO: Remove or rename, on Linux the prototype collides with std function from math.h
 static inline double round(double value)
 {
     return floor(0.5 + value);
 };
+#endif
 
 
 //=============================================================================
@@ -1077,7 +1080,7 @@ int Universal::Initialize()
     // readout is finished. Otherwise we will fall back to old polling method.
     acqCfgNew_.CallbacksEnabled = false;
 #ifdef PVCAM_CALLBACKS_SUPPORTED
-    if ( pl_cam_register_callback_ex3( hPVCAM_, PL_CALLBACK_EOF, PvcamCallbackEofEx3, this ) == PV_OK )
+    if ( pl_cam_register_callback_ex3( hPVCAM_, PL_CALLBACK_EOF, (void*)&Universal::PvcamCallbackEofEx3, this ) == PV_OK )
     {
         pAct = new CPropertyAction(this, &Universal::OnAcquisitionMethod);
         nRet = CreateProperty(g_Keyword_AcqMethod, g_Keyword_AcqMethod_Polling, MM::String, false, pAct );
@@ -1311,8 +1314,10 @@ int Universal::Initialize()
     acqCfgNew_.Rois.SetCapacity(maxRois);
     acqCfgNew_.Rois.Add(PvRoi(0, 0, camSerSize_, camParSize_));
     // We know the max ROIs so update our error message
+    std::stringstream ss;
+    ss << maxRois;
     SetErrorText(ERR_TOO_MANY_ROIS,
-        std::string("Device supports only " + std::to_string((long long)maxRois) + " ROI(s).").c_str());
+        std::string("Device supports only " + ss.str() + " ROI(s).").c_str());
 
     // Make sure our configs are synchronized
     acqCfgCur_ = acqCfgNew_;
@@ -2913,7 +2918,6 @@ int Universal::OnAcquisitionMethod(MM::PropertyBase* pProp, MM::ActionType eAct)
 }
 #endif // PVCAM_CALLBACKS_SUPPORTED
 
-#ifdef WIN32
 int Universal::OnPostProcProperties(MM::PropertyBase* pProp, MM::ActionType eAct, long index)
 {
     // When user changes a PP property in UI this method is called twice: first with MM::AfterSet followed by 
@@ -3047,7 +3051,6 @@ int Universal::OnResetPostProcProperties(MM::PropertyBase* pProp, MM::ActionType
 
     return DEVICE_OK;
 }
-#endif
 
 #ifdef PVCAM_SMART_STREAMING_SUPPORTED
 int Universal::OnSmartStreamingEnable(MM::PropertyBase* pProp, MM::ActionType eAct)
@@ -3639,14 +3642,29 @@ int Universal::ProcessNotification( const NotificationEntry& entry )
             break;
         }
         // Selected metadata from the frame header
-        md.PutImageTag<ulong64>( "PVCAM-FMD-ExposureTimeNs",
-            (ulong64)fHdr->exposureTime * fHdr->exposureTimeResNs );
         md.PutImageTag<uns32>( "PVCAM-FMD-FrameNr",   fHdr->frameNr );
         md.PutImageTag<uns16>( "PVCAM-FMD-RoiCount",  fHdr->roiCount );
-        md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampBofNs",
-            (ulong64)fHdr->timestampBOF * fHdr->timestampResNs );
-        md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampEofNs",
-            (ulong64)fHdr->timestampEOF * fHdr->timestampResNs );
+        if (fHdr->version <= 2)
+        {
+            md.PutImageTag<ulong64>( "PVCAM-FMD-ExposureTimeNs",
+                (ulong64)fHdr->exposureTime * fHdr->exposureTimeResNs );
+            md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampBofNs",
+                (ulong64)fHdr->timestampBOF * fHdr->timestampResNs );
+            md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampEofNs",
+                (ulong64)fHdr->timestampEOF * fHdr->timestampResNs );
+        }
+        else
+        {
+            const md_frame_header_v3* fHdr3 =
+                reinterpret_cast<const md_frame_header_v3*>(metaFrameStruct_->header);
+            // Version 3 of the metadata transfers the timestamps in pico-seconds.
+            md.PutImageTag<ulong64>( "PVCAM-FMD-ExposureTimePs",
+                (ulong64)fHdr3->exposureTime );
+            md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampBofPs",
+                (ulong64)fHdr3->timestampBOF );
+            md.PutImageTag<ulong64>( "PVCAM-FMD-TimestampEofPs",
+                (ulong64)fHdr3->timestampEOF );
+        }
         // Implied ROI
         const rgn_type& iRoi = metaFrameStruct_->impliedRoi;
         snprintf(metaRoiStr_, sizeof(metaRoiStr_),
@@ -3693,7 +3711,6 @@ int Universal::ProcessNotification( const NotificationEntry& entry )
     return ret;
 }
 
-#ifndef linux
 /*
 * Overrides a virtual function from the CCameraBase class
 * Do actual capture
@@ -3776,8 +3793,6 @@ void Universal::PollingThreadExiting() throw ()
     }
 }
 
-#endif
-
 
 //=============================================================================
 //===================================================================== PRIVATE
@@ -3821,7 +3836,7 @@ int Universal::initializeStaticCameraParams()
     if (paramCamFwVersion.IsAvailable())
     {
         const uns16 fwVersion = paramCamFwVersion.Current();
-        char buf[7]; // MMM.mmm
+        char buf[8]; // MMM.mmm
         uns16 versionMinor = fwVersion & 0x00FF;
         uns16 versionMajor = (fwVersion >> 8) & 0x00FF;
         sprintf( buf, "%d.%d", versionMajor, versionMinor );
@@ -3947,8 +3962,6 @@ int Universal::initializePostProcessing()
 {
     int nRet = DEVICE_OK;
 
-#ifdef WIN32
-
     rs_bool bAvail;
     CPropertyAction *pAct;
 
@@ -4054,7 +4067,6 @@ int Universal::initializePostProcessing()
         refreshPostProcValues();
     }
 
-#endif
     return nRet;
 }
 
@@ -5017,7 +5029,6 @@ unsigned int Universal::getEstimatedMaxReadoutTimeMs() const
     return readTimeEstMs + transferTimeMaxMs;
 }
 
-#ifdef WIN32
 int Universal::refreshPostProcValues()
 {
     int16 ppIndx;
@@ -5060,7 +5071,6 @@ int Universal::revertPostProcValue( long absoluteParamIdx, MM::PropertyBase* pPr
 
     return DEVICE_OK;
 }
-#endif // WIN32
 
 int Universal::postExpSetupInit(unsigned int frameSize)
 {
@@ -5729,7 +5739,7 @@ int Universal::applyAcqConfig(bool forceSetup)
         g_pvcamLock.Lock();
         if (acqCfgNew_.CallbacksEnabled)
         {
-            if (pl_cam_register_callback_ex3(hPVCAM_, PL_CALLBACK_EOF, PvcamCallbackEofEx3, this) != PV_OK)
+            if (pl_cam_register_callback_ex3(hPVCAM_, PL_CALLBACK_EOF, (void*)&Universal::PvcamCallbackEofEx3, this) != PV_OK)
             {
                 acqCfgNew_ = acqCfgCur_; // New settings not accepted, reset it back to previous state
                 nRet = LogPvcamError(__LINE__, "pl_cam_register_callback_ex3() failed");
@@ -5857,6 +5867,14 @@ int Universal::applyAcqConfig(bool forceSetup)
     if (acqCfgNew_.AcquisitionType != acqCfgCur_.AcquisitionType)
     {
         bufferResizeRequired = true;
+    }
+
+    // Port change triggers speed change, so this happens any time port and/or speed changes.
+    // Updating PP upon change in port/speed is needed for recent cameras. For example,
+    // Kinetix allows configuring separate DESPECKLE values per each port.
+    if (speedChanged)
+    {
+        refreshPostProcValues();
     }
 
     // The new properties have been applied. Since we now reinitialize the buffers

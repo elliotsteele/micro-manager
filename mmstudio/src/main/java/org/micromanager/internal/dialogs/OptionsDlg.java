@@ -21,38 +21,31 @@
 
 package org.micromanager.internal.dialogs;
 
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.text.ParseException;
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JSeparator;
-import javax.swing.JTextField;
-import javax.swing.WindowConstants;
+import javax.swing.*;
+
 import mmcorej.CMMCore;
 import org.micromanager.ApplicationSkin.SkinMode;
 import org.micromanager.Studio;
 import org.micromanager.UserProfile;
 import org.micromanager.data.internal.multipagetiff.StorageMultipageTiff;
 import org.micromanager.internal.MMStudio;
+import org.micromanager.internal.MainFrame;
 import org.micromanager.internal.StartupSettings;
 import org.micromanager.internal.logging.LogFileManager;
 import org.micromanager.internal.script.ScriptPanel;
-import org.micromanager.internal.utils.MMDialog;
-import org.micromanager.internal.utils.NumberUtils;
-import org.micromanager.internal.utils.ReportingUtils;
-import org.micromanager.internal.utils.UIMonitor;
+import org.micromanager.internal.utils.*;
 import org.micromanager.internal.zmq.ZMQSocketWrapper;
 
 /**
  * Options dialog for MMStudio.
  *
  */
-public final class OptionsDlg extends MMDialog {
+public final class OptionsDlg extends JDialog {
    private static final long serialVersionUID = 1L;
    private static final String IS_DEBUG_LOG_ENABLED = "is debug logging enabled";
    private static final String SHOULD_CLOSE_ON_EXIT = "should close the entire program when the Micro-Manager plugin is closed";
@@ -72,7 +65,7 @@ public final class OptionsDlg extends MMDialog {
     * @param mmStudio - MMStudio object (including Studio implementation) 
     */
    public OptionsDlg(CMMCore core, MMStudio mmStudio) {
-      super("global micro-manager options");
+      super();
       mmStudio_ = mmStudio;
       core_ = core;
 
@@ -84,7 +77,10 @@ public final class OptionsDlg extends MMDialog {
       super.setAlwaysOnTop(true);
       super.setTitle("Micro-Manager Options");
 
-      super.loadAndRestorePosition(100, 100);
+      super.setIconImage(Toolkit.getDefaultToolkit().getImage(
+              getClass().getResource("/org/micromanager/icons/microscope.gif")));
+      super.setLocation(100, 100);
+      WindowPositioning.setUpLocationMemory(this, this.getClass(), null);
 
       super.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
       super.addWindowListener(new WindowAdapter() {
@@ -139,13 +135,13 @@ public final class OptionsDlg extends MMDialog {
 
       final JCheckBox deleteLogCheckBox = new JCheckBox();
       deleteLogCheckBox.setText("Delete log files after");
-      deleteLogCheckBox.setSelected(mmStudio_.getShouldDeleteOldCoreLogs());
+      deleteLogCheckBox.setSelected(mmStudio_.settings().getShouldDeleteOldCoreLogs());
       deleteLogCheckBox.addActionListener((ActionEvent e) -> {
-         mmStudio_.setShouldDeleteOldCoreLogs(deleteLogCheckBox.isSelected());
+         mmStudio_.settings().setShouldDeleteOldCoreLogs(deleteLogCheckBox.isSelected());
       });
 
       logDeleteDaysField_ =
-         new JTextField(Integer.toString(mmStudio_.getCoreLogLifetimeDays()), 2);
+         new JTextField(Integer.toString(mmStudio_.settings().getCoreLogLifetimeDays()), 2);
 
       final JButton deleteLogFilesButton = new JButton();
       deleteLogFilesButton.setText("Delete Log Files Now");
@@ -200,7 +196,7 @@ public final class OptionsDlg extends MMDialog {
       });
 
       bufSizeField_ = new JTextField(
-            Integer.toString(mmStudio_.getCircularBufferSize()), 5);
+            Integer.toString(mmStudio_.settings().getCircularBufferSize()), 5);
 
       String[] options = new String[SkinMode.values().length];
       for (int i = 0; i < SkinMode.values().length; ++i) {
@@ -222,7 +218,7 @@ public final class OptionsDlg extends MMDialog {
       closeOnExitCheckBox.addActionListener((ActionEvent arg0) -> {
          boolean shouldClose = closeOnExitCheckBox.isSelected();
          setShouldCloseOnExit(mmStudio_, shouldClose);
-         MMStudio.getFrame().setExitStrategy(shouldClose);
+         ((MainFrame) mmStudio_.app().getMainWindow()).setExitStrategy(shouldClose);
       });
 
       final JCheckBox metadataFileWithMultipageTiffCheckBox = new JCheckBox();
@@ -257,14 +253,14 @@ public final class OptionsDlg extends MMDialog {
       
       final JCheckBox runServer = new JCheckBox();
       runServer.setText("Run server on port " + ZMQSocketWrapper.DEFAULT_MASTER_PORT_NUMBER);
-      runServer.setSelected(mmStudio.getShouldRunZMQServer());
+      runServer.setSelected(mmStudio.settings().getShouldRunZMQServer());
       runServer.addActionListener((ActionEvent arg0) ->  {
          if (runServer.isSelected()) {
             mmStudio_.runZMQServer();
          } else {
             mmStudio_.stopZMQServer();
          }
-         mmStudio_.setShouldRunZMQServer(runServer.isSelected());         
+         mmStudio_.settings().setShouldRunZMQServer(runServer.isSelected());         
       });
 
       final JButton closeButton = new JButton();
@@ -348,8 +344,8 @@ public final class OptionsDlg extends MMDialog {
          return;
       }
 
-      mmStudio_.setCircularBufferSize(seqBufSize);
-      mmStudio_.setCoreLogLifetimeDays(deleteLogDays);
+      mmStudio_.settings().setCircularBufferSize(seqBufSize);
+      mmStudio_.settings().setCoreLogLifetimeDays(deleteLogDays);
 
       ScriptPanel.setStartupScript(mmStudio_, startupScriptFile_.getText());
       mmStudio_.app().makeActive();

@@ -779,15 +779,6 @@ public:
       }
    }
 
-   // acq context api
-   // NOTE: experimental feature, do not count on these methods
-   virtual int AcqBefore() {return DEVICE_OK;}
-   virtual int AcqAfter() {return DEVICE_OK;}
-   virtual int AcqBeforeFrame() {return DEVICE_OK;}
-   virtual int AcqAfterFrame() {return DEVICE_OK;}
-   virtual int AcqBeforeStack() {return DEVICE_OK;}
-   virtual int AcqAfterStack() {return DEVICE_OK;}
-
    // device discovery (auto-configuration)
    virtual bool SupportsDeviceDetection(void) {
        return false;
@@ -963,7 +954,7 @@ protected:
    * With this method we can get a handle to other devices loaded in the system,
    * if we know the device name.
    */
-   MM::Device* GetDevice(const char* deviceLabel)
+   MM::Device* GetDevice(const char* deviceLabel) const
    {
       if (callback_)
          return callback_->GetDevice(this, deviceLabel);

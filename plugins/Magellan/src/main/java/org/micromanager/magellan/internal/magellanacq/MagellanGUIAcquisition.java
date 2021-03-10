@@ -37,6 +37,7 @@ import org.micromanager.magellan.internal.main.Magellan;
 import org.micromanager.magellan.internal.misc.Log;
 import org.micromanager.magellan.internal.surfacesandregions.Point3d;
 import org.micromanager.multiresstorage.MultiResMultipageTiffStorage;
+import org.micromanager.multiresstorage.StorageAPI;
 import org.micromanager.remote.RemoteViewerStorageAdapter;
 
 /**
@@ -110,8 +111,16 @@ public class MagellanGUIAcquisition extends Acquisition implements MagellanAcqui
    }
 
    //Called by pycromanager
-   public MultiResMultipageTiffStorage getStorage() {
+   public StorageAPI getStorage() {
       return dataSink_ == null ? null : ((RemoteViewerStorageAdapter) dataSink_).getStorage();
+   }
+
+   @Override
+   public boolean isFinished() {
+      if (dataSink_ != null) {
+         return dataSink_.isFinished();
+      }
+      return true;
    }
 
    private Iterator<AcquisitionEvent> buildAcqEventGenerator() {
@@ -163,7 +172,6 @@ public class MagellanGUIAcquisition extends Acquisition implements MagellanAcqui
          acqFunctions.add(MagellanZStack());
       }
       AcquisitionEvent baseEvent = new AcquisitionEvent(this);
-      baseEvent.setAxisPosition(MagellanMD.POSITION_AXIS, 0);
       return new AcquisitionEventIterator(baseEvent, acqFunctions, monitorSliceIndices());
    }
 

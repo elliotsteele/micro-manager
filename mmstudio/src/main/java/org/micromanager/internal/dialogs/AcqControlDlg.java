@@ -30,10 +30,11 @@ import org.micromanager.acquisition.internal.AcquisitionWrapperEngine;
 import org.micromanager.data.Datastore;
 import org.micromanager.data.internal.DefaultDatastore;
 import org.micromanager.display.ChannelDisplaySettings;
-import org.micromanager.display.internal.RememberedSettings;
+import org.micromanager.display.internal.RememberedDisplaySettings;
 import org.micromanager.events.ChannelExposureEvent;
 import org.micromanager.events.ChannelGroupChangedEvent;
 import org.micromanager.events.GUIRefreshEvent;
+import org.micromanager.events.NewPositionListEvent;
 import org.micromanager.events.internal.ChannelColorEvent;
 import org.micromanager.internal.MMStudio;
 import org.micromanager.internal.interfaces.AcqSettingsListener;
@@ -287,6 +288,11 @@ public final class AcqControlDlg extends JFrame implements PropertyChangeListene
 
       // load acquisition settings
       SequenceSettings sequenceSettings = loadAcqSettingsFromProfile();
+
+      // protect from bugs caused by zero z step
+      if (sequenceSettings.sliceZStepUm() < 0.000000001) {
+         sequenceSettings = sequenceSettings.copyBuilder().sliceZStepUm(0.1).build();
+      }
 
       // Restore Column Width and Column order
       int columnCount = 7;
@@ -954,10 +960,10 @@ public final class AcqControlDlg extends JFrame implements PropertyChangeListene
    public void onChannelColorEvent(ChannelColorEvent event) {
       model_.setChannelColor(event.getChannelGroup(), event.getChannel(), event.getColor());
       ChannelDisplaySettings newCDS =
-              RememberedSettings.loadChannel(mmStudio_, event.getChannelGroup(),
+              RememberedDisplaySettings.loadChannel(mmStudio_, event.getChannelGroup(),
                       event.getChannel(), null ).copyBuilder().color(event.getColor()).
                       build();
-      RememberedSettings.storeChannel(mmStudio_, event.getChannelGroup(), event.getChannel(), newCDS);
+      RememberedDisplaySettings.storeChannel(mmStudio_, event.getChannelGroup(), event.getChannel(), newCDS);
    }
 
    @Subscribe
@@ -1212,6 +1218,20 @@ public final class AcqControlDlg extends JFrame implements PropertyChangeListene
          savePanel_.repaint();
 
          disableGUItoSettings_ = false;
+      }
+   }
+
+   @Subscribe
+   public void onNewPositionList(NewPositionListEvent newPositionListEvent) {
+      if (!SwingUtilities.isEventDispatchThread()) {
+         SwingUtilities.invokeLater(() -> {
+            onNewPositionList(newPositionListEvent);
+         } );
+      }
+      else {
+         acqEng_.setPositionList(newPositionListEvent.getPositionList());
+         // update summary
+         summaryTextArea_.setText(acqEng_.getVerboseSummary());
       }
    }
 
@@ -1557,7 +1577,12 @@ public final class AcqControlDlg extends JFrame implements PropertyChangeListene
       }
       ssb.saveMode(DefaultDatastore.getPreferredSaveMode(mmStudio_));
 
-      acqEng_.setSequenceSettings(ssb.build());
+      try {
+         acqEng_.setSequenceSettings(ssb.build());
+      } catch (UnsupportedOperationException uoex) {
+         mmStudio_.logs().showError("Zero Z step size is not supported, resetting to 1 micron", this);
+         acqEng_.setSequenceSettings(ssb.sliceZStepUm(1.0).build());
+      }
 
       disableGUItoSettings_ = false;
       updateGUIContents();

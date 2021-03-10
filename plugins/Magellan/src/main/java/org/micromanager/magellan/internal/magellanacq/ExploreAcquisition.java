@@ -46,6 +46,7 @@ import org.micromanager.magellan.internal.channels.ChannelGroupSettings;
 import org.micromanager.magellan.internal.channels.SingleChannelSetting;
 import org.micromanager.magellan.internal.gui.GUI;
 import org.micromanager.multiresstorage.MultiResMultipageTiffStorage;
+import org.micromanager.multiresstorage.StorageAPI;
 import org.micromanager.remote.RemoteViewerStorageAdapter;
 
 /**
@@ -104,6 +105,14 @@ public class ExploreAcquisition extends Acquisition implements MagellanAcquisiti
    }
 
    @Override
+   public boolean isFinished() {
+      if (dataSink_ != null) {
+         return dataSink_.isFinished();
+      }
+      return true;
+   }
+
+   @Override
    public void abort() {
       super.abort();
       submittedSequenceMonitorExecutor_.shutdownNow();
@@ -132,7 +141,7 @@ public class ExploreAcquisition extends Acquisition implements MagellanAcquisiti
    }
 
    //Called by pycromanager
-   public MultiResMultipageTiffStorage getStorage() {
+   public StorageAPI getStorage() {
       return dataSink_ == null ? null : ((RemoteViewerStorageAdapter) dataSink_).getStorage();
    }
 
@@ -222,7 +231,7 @@ public class ExploreAcquisition extends Acquisition implements MagellanAcquisiti
       }
       ArrayList<Function<AcquisitionEvent, Iterator<AcquisitionEvent>>> acqFunctions
               = new ArrayList<Function<AcquisitionEvent, Iterator<AcquisitionEvent>>>();
-      acqFunctions.add(positions(selectedXYPositions, posIndices));
+      acqFunctions.add(positions(selectedXYPositions));
       acqFunctions.add(AcqEventModules.zStack(minZIndex, maxZIndex + 1, zStep_, zOrigin_));
       if (settings_.channels_ != null) {
          ArrayList<ChannelSetting> channels = new ArrayList<ChannelSetting>();
@@ -271,8 +280,7 @@ public class ExploreAcquisition extends Acquisition implements MagellanAcquisiti
       });
    }
 
-   private Function<AcquisitionEvent, Iterator<AcquisitionEvent>> positions(
-           List<XYStagePosition> positions, int[] posIndices) {
+   private Function<AcquisitionEvent, Iterator<AcquisitionEvent>> positions(List<XYStagePosition> positions) {
       return (AcquisitionEvent event) -> {
          Stream.Builder<AcquisitionEvent> builder = Stream.builder();
          if (positions == null) {
@@ -280,11 +288,15 @@ public class ExploreAcquisition extends Acquisition implements MagellanAcquisiti
          } else {
             for (int index = 0; index < positions.size(); index++) {
                AcquisitionEvent posEvent = event.copy();
+               //These tell it what to acquire
                posEvent.setGridCol(positions.get(index).getGridCol());
                posEvent.setGridRow(positions.get(index).getGridRow());
+               //These tell how to store it
+               posEvent.setAxisPosition(MagellanMD.AXES_GRID_ROW, positions.get(index).getGridRow());
+               posEvent.setAxisPosition(MagellanMD.AXES_GRID_COL, positions.get(index).getGridCol());
                posEvent.setX(positions.get(index).getCenter().x);
                posEvent.setY(positions.get(index).getCenter().y);
-               posEvent.setAxisPosition(MagellanMD.POSITION_AXIS, posIndices[index]);
+//               posEvent.setAxisPosition(MagellanMD.POSITION_AXIS, posIndices[index]);
                builder.accept(posEvent);
             }
          }

@@ -28,6 +28,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
+import java.awt.Toolkit;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -73,19 +74,14 @@ import org.micromanager.events.internal.MouseMovesStageStateChangeEvent;
 import org.micromanager.events.internal.ShutterDevicesEvent;
 import org.micromanager.internal.dialogs.OptionsDlg;
 import org.micromanager.internal.dialogs.StageControlFrame;
-import org.micromanager.internal.utils.DragDropUtil;
-import org.micromanager.internal.utils.GUIUtils;
-import org.micromanager.internal.utils.MMFrame;
-import org.micromanager.internal.utils.MMKeyDispatcher;
-import org.micromanager.internal.utils.NumberUtils;
-import org.micromanager.internal.utils.ReportingUtils;
+import org.micromanager.internal.utils.*;
 import org.micromanager.quickaccess.internal.QuickAccessFactory;
 import org.micromanager.quickaccess.internal.controls.ShutterControl;
 
 /**
  * GUI code for the primary window of the program. And nothing else.
  */
-public final class MainFrame extends MMFrame {
+public final class MainFrame extends JFrame {
 
    private static final String MICRO_MANAGER_TITLE = "Micro-Manager";
    private static final String MAIN_EXPOSURE = "exposure";
@@ -98,10 +94,10 @@ public final class MainFrame extends MMFrame {
    // GUI components
    private JLabel configFile_;
    private JLabel profileName_;
-   private JComboBox comboBinning_;
-   private JComboBox shutterComboBox_;
+   private JComboBox<String> comboBinning_;
+   private JComboBox<String> shutterComboBox_;
    private JTextField textFieldExp_;
-   private JComboBox chanGroupSelect_;
+   private JComboBox<String> chanGroupSelect_;
    // Toggles activity of chanGroupSelect_ on or off.
    private boolean shouldChangeChannelGroup_;
    private JLabel labelImageDimensions_;
@@ -159,15 +155,18 @@ public final class MainFrame extends MMFrame {
 
       setExitStrategy(OptionsDlg.getShouldCloseOnExit(mmStudio_));
 
-      super.setJMenuBar(mmStudio.getMMMenubar());
+      super.setJMenuBar(mmStudio.uiManager().menubar());
 
       setConfigText("");
       // Set minimum size so we can't resize smaller and hide some of our
       // contents. Our insets are only available after the first call to
       // pack().
       super.pack();
+      super.setIconImage(Toolkit.getDefaultToolkit().getImage(
+              getClass().getResource("/org/micromanager/icons/microscope.gif")));
       super.setMinimumSize(super.getSize());
-      resetPosition();
+      super.setBounds(100, 100, 644, 220);
+      WindowPositioning.setUpBoundsMemory(this, this.getClass(), null);
       mmStudio_.events().registerForEvents(this);
    }
 
@@ -193,11 +192,6 @@ public final class MainFrame extends MMFrame {
             mmStudio_.closeSequence(false);
          }
       });
-   }
-
-   public void resetPosition() {
-      // put frame back where it was last time if possible
-      loadAndRestorePosition(100, 100, 644, 220);
    }
 
    public void initializeConfigPad() {
@@ -244,12 +238,12 @@ public final class MainFrame extends MMFrame {
       textFieldExp_.addFocusListener(new FocusAdapter() {
          @Override
          public void focusLost(FocusEvent fe) {
-            mmStudio_.setExposure(getDisplayedExposureTime());
+            mmStudio_.app().setExposure(getDisplayedExposureTime());
          }
       });
       textFieldExp_.setFont(defaultFont_);
       textFieldExp_.addActionListener((ActionEvent e) -> {
-         mmStudio_.setExposure(getDisplayedExposureTime());
+         mmStudio_.app().setExposure(getDisplayedExposureTime());
       });
       subPanel.add(textFieldExp_, "gapleft push, wrap");
 
@@ -258,7 +252,7 @@ public final class MainFrame extends MMFrame {
 
       // HACK: limit the width of this combo box, ignoring the width of the
       // entries inside of it.
-      chanGroupSelect_ = new JComboBox() {
+      chanGroupSelect_ = new JComboBox<String> () {
          @Override
          public Dimension getMinimumSize() {
             return new Dimension(110, super.getSize().height);
@@ -279,12 +273,12 @@ public final class MainFrame extends MMFrame {
       // Binning.
       subPanel.add(createLabel("Binning", false), "split 2");
 
-      comboBinning_ = new JComboBox();
+      comboBinning_ = new JComboBox<>();
       comboBinning_.setName("Binning");
       comboBinning_.setFont(defaultFont_);
       comboBinning_.setMaximumRowCount(4);
       comboBinning_.addActionListener((ActionEvent e) -> {
-         mmStudio_.changeBinning();
+         mmStudio_.changeBinning(getBinMode());
       });
       subPanel.add(comboBinning_, "gapleft push, width 60::, wrap");
 
@@ -294,7 +288,7 @@ public final class MainFrame extends MMFrame {
       shutterPanel.setBorder(BorderFactory.createLoweredBevelBorder());
       shutterPanel.add(createLabel("Shutter", false), "split 2");
 
-      shutterComboBox_ = new JComboBox();
+      shutterComboBox_ = new JComboBox<>();
       shutterComboBox_.setName("Shutter");
       shutterComboBox_.setFont(defaultFont_);
       shutterComboBox_.addActionListener((ActionEvent arg0) -> {
@@ -329,7 +323,7 @@ public final class MainFrame extends MMFrame {
 
       saveConfigButton_ = createButton("Save", null,
          "Save current presets to the configuration file", () -> {
-            mmStudio_.promptToSaveConfigPresets();
+            mmStudio_.uiManager().promptToSaveConfigPresets();
       });
       subPanel.add(saveConfigButton_,
             "pushy 0, gapleft push, alignx right, w 88!, h 20!");
@@ -379,7 +373,7 @@ public final class MainFrame extends MMFrame {
       JButton refreshButton = createButton("Refresh", "arrow_refresh.png",
          "Refresh all GUI controls directly from the hardware", () -> {
             core_.updateSystemStateCache();
-            mmStudio_.updateGUI(true);
+            mmStudio_.uiManager().updateGUI(true);
       });
       subPanel.add(refreshButton, BIGBUTTON_SIZE);
 
@@ -489,18 +483,18 @@ public final class MainFrame extends MMFrame {
             "span 2, alignx center, growx, wrap");
       setRoiButton_ = createButton(null, "shape_handles.png",
          "Set Region Of Interest to selected rectangle", () -> {
-            mmStudio_.setROI();
+            mmStudio_.roiManager().setROI();
       });
       roiPanel.add(setRoiButton_, SMALLBUTTON_SIZE);
       centerQuadButton_ = createButton(null, "center_quad.png",
          "Set Region Of Interest to center quad of camera", () -> {
-            mmStudio_.setCenterQuad();
+            mmStudio_.roiManager().setCenterQuad();
       });
       roiPanel.add(centerQuadButton_, SMALLBUTTON_SIZE);
 
       clearRoiButton_ = createButton(null, "arrow_out.png",
          "Reset Region of Interest to full frame", () -> {
-            mmStudio_.clearROI();
+            mmStudio_.roiManager().clearROI();
       });
       roiPanel.add(clearRoiButton_, SMALLBUTTON_SIZE);
 
@@ -530,7 +524,7 @@ public final class MainFrame extends MMFrame {
          boolean isSelected = handMovesButton_.isSelected();
          mmStudio_.updateCenterAndDragListener(isSelected);
       });
-      setHandMovesButton(mmStudio_.getMMMenubar().getToolsMenu().getMouseMovesStage());
+      setHandMovesButton(mmStudio_.uiManager().menubar().getToolsMenu().getMouseMovesStage());
       stagePanel.add(handMovesButton_, SMALLBUTTON_SIZE);
 
       AbstractButton listButton = createButton(null, "application_view_list.png",
@@ -557,7 +551,7 @@ public final class MainFrame extends MMFrame {
       // http://publicdomainvectors.org/en/free-clipart/Adjustable-wrench-icon-vector-image/23097.html
       autofocusConfigureButton_ = createButton(null,
             "wrench.png", "Set autofocus options", () -> {
-               mmStudio_.showAutofocusDialog();
+               mmStudio_.app().showAutofocusDialog();
       });
       autoPanel.add(autofocusConfigureButton_, SMALLBUTTON_SIZE);
 
@@ -780,7 +774,6 @@ public final class MainFrame extends MMFrame {
     * Save our settings to the user profile.
     */
    public void savePrefs() {
-      this.savePosition();
       mmStudio_.profile().getSettings(MainFrame.class).putString(
             MAIN_EXPOSURE, textFieldExp_.getText());
    }

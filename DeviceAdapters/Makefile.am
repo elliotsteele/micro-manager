@@ -39,7 +39,7 @@ if BUILD_OPENCV
    FAKECAMERA = FakeCamera
 endif
 if BUILD_PVCAM
-   PVCAM = PVCAM PrincetonInstruments
+   PVCAM = PVCAM
 endif
 if BUILD_QCAM
    QCAM = QCam
@@ -166,7 +166,6 @@ SUBDIRS = \
 	Sapphire \
 	Scientifica \
 	SerialManager \
-	SimpleAutofocus \
 	Skyra \
 	SmarActHCU-3D \
 	SouthPort \

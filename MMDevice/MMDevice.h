@@ -27,7 +27,7 @@
 // Header version
 // If any of the class definitions changes, the interface version
 // must be incremented
-#define DEVICE_INTERFACE_VERSION 69
+#define DEVICE_INTERFACE_VERSION 70
 ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -325,14 +325,6 @@ namespace MM {
       virtual void GetName(char* name) const = 0;
       virtual void SetCallback(Core* callback) = 0;
 
-      // acq context api
-      virtual int AcqBefore() = 0;
-      virtual int AcqAfter() = 0;
-      virtual int AcqBeforeFrame() = 0;
-      virtual int AcqAfterFrame() = 0;
-      virtual int AcqBeforeStack() = 0;
-      virtual int AcqAfterStack() = 0;
-
       //device discovery API
       virtual bool SupportsDeviceDetection(void) = 0;
       virtual MM::DeviceDetectionStatus DetectDevice(void) = 0;
@@ -383,11 +375,20 @@ namespace MM {
        * Return a pointer to a buffer containing the image data
        * The calling program will assume the size of the buffer based on the values
        * obtained from GetImageBufferSize(), which in turn should be consistent with
-       * values returned by GetImageWidth(), GetImageHeight() and GetImageBytesPerPixel().
+       * values returned by GetImageWidth(), GetImageHeight(), GetImageBytesPerPixel(),
+       * and getNumberOfComponents().
        * The calling program also assumes that camera never changes the size of
        * the pixel buffer on its own. In other words, the buffer can change only if
        * appropriate properties are set (such as binning, pixel type, etc.)
        * Multi-Channel cameras should return the content of the first channel in this call.
+       *
+       * Supported data types are byte (8 bits per pixel, 1 component), short 
+       * (16 bits per pixel, 1 component), float (32 bits per pixel, 1 component, not
+       * supported by the UI yet), RGB_32 (8 bits per component, 4 components), RGB_64
+       * (16 bits per component, 4 components, not supported by UI yet).  
+       * RGB buffers are expected to be in big endian ARGB format (ARGB8888), which means that
+       * on little endian format (currently most/all? code is compiled for little endian 
+       * architecture), the format is BGRA888 (see: https://en.wikipedia.org/wiki/RGBA_color_model).
        *
        */
       virtual const unsigned char* GetImageBuffer() = 0;
@@ -432,7 +433,7 @@ namespace MM {
        * Required by the MM::Camera API.
        * For multi-channel cameras, return the size of a single channel
        */
-      virtual long GetImageBufferSize()const = 0;
+      virtual long GetImageBufferSize() const = 0;
       /**
        * Returns image buffer X-size in pixels.
        * Required by the MM::Camera API.
